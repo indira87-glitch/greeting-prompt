@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#F4EFE6">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Greeting Prompt">
+<title>Greeting Prompt</title>
+<style>
+  :root{
+    --bg:#F4EFE6;
+    --card:#FFFFFF;
+    --ink:#2B2620;
+    --muted:#9A9388;
+    --line:#E9E2D5;
+    --safe:#3E9B6B;
+    --warn:#E0A93B;
+    --over:#D15A43;
+    --accent:var(--safe);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;
+    line-height:1.5;
+    min-height:100dvh;
+    display:flex;
+    justify-content:center;
+    padding:20px 16px calc(20px + env(safe-area-inset-bottom));
+  }
+  .wrap{width:100%;max-width:560px;display:flex;flex-direction:column;gap:14px;}
+
+  header{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:0 2px;}
+  .eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700;}
+  h1{font-size:17px;margin:0;font-weight:800;letter-spacing:-.01em;}
+
+  .tabs{display:flex;gap:6px;padding:0 2px;}
+  .tab{
+    flex:1;position:relative;
+    background:transparent;
+    border:1px solid var(--line);
+    color:var(--muted);
+    border-radius:14px;
+    padding:11px 0;
+    font-size:15px;font-weight:800;
+    font-variant-numeric:tabular-nums;
+    transition:background .18s ease, color .18s ease, border-color .18s ease;
+  }
+  .tab.active{background:var(--ink);color:#FFF8E1;border-color:var(--ink);}
+  .tab.has::after{
+    content:"";position:absolute;top:7px;right:9px;
+    width:5px;height:5px;border-radius:99px;background:var(--safe);
+  }
+  .tab.active.has::after{background:#FFF8E1;}
+
+  .card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:22px;
+    padding:6px;
+    box-shadow:0 1px 0 rgba(43,38,32,.03), 0 12px 30px -22px rgba(43,38,32,.35);
+  }
+  textarea{
+    width:100%;
+    border:0;
+    outline:0;
+    resize:none;
+    background:transparent;
+    color:var(--ink);
+    font:inherit;
+    font-size:16px;            /* 16px 이상이라 iOS에서 자동 확대 방지 */
+    line-height:1.6;
+    padding:16px;
+    min-height:460px;
+    border-radius:18px;
+  }
+  textarea::placeholder{color:#C2BBAD;}
+
+  /* 카운터: 이 도구의 핵심 */
+  .meter{display:flex;flex-direction:column;gap:8px;padding:2px;}
+  .track{height:8px;border-radius:99px;background:var(--line);overflow:hidden;}
+  .fill{height:100%;width:0%;border-radius:99px;background:var(--accent);transition:width .18s ease, background .25s ease;}
+  .readout{display:flex;align-items:baseline;justify-content:space-between;padding:0 4px;}
+  .count{
+    font-variant-numeric:tabular-nums;
+    font-feature-settings:"tnum";
+    font-weight:800;
+    font-size:22px;
+    letter-spacing:-.01em;
+  }
+  .count .cur{color:var(--accent);transition:color .25s ease;}
+  .count .max{color:var(--muted);font-weight:700;font-size:15px;}
+  .status{font-size:14px;font-weight:700;color:var(--muted);transition:color .25s ease;}
+  .status.over{color:var(--over);}
+
+  .actions{display:flex;gap:10px;}
+  button{
+    font:inherit;font-weight:800;
+    border:0;border-radius:16px;
+    padding:15px 16px;
+    cursor:pointer;
+    transition:transform .06s ease, opacity .2s ease, background .2s ease;
+  }
+  button:active{transform:scale(.985);}
+  .copy{flex:1;background:var(--ink);color:#FFF8E1;font-size:16px;}
+  .copy.done{background:var(--safe);}
+  .clear{background:transparent;color:var(--muted);border:1px solid var(--line);padding-left:18px;padding-right:18px;}
+
+  .note{font-size:12px;color:var(--muted);text-align:center;padding:0 8px;line-height:1.6;}
+  .note code{background:#EFE8DB;border-radius:6px;padding:1px 6px;font-size:11px;}
+
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;}}
+  button:focus-visible{outline:2px solid var(--ink);outline-offset:2px;}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Greeting Prompt</h1>
+    </header>
+
+    <div class="tabs" id="tabs">
+      <button class="tab active" data-i="0">1</button>
+      <button class="tab" data-i="1">2</button>
+      <button class="tab" data-i="2">3</button>
+    </div>
+
+    <div class="card">
+      <textarea id="text" placeholder="내용" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
+    </div>
+
+    <div class="meter">
+      <div class="track"><div class="fill" id="fill"></div></div>
+      <div class="readout">
+        <div class="count"><span class="cur" id="cur">0</span><span class="max"> / 500</span></div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="copy" id="copy">Copy</button>
+      <button class="clear" id="clear">Clean</button>
+    </div>
+  </div>
+
+<script>
+  var LIMIT = 500;
+  var PAGES = 3;
+  var ta = document.getElementById('text');
+  var cur = document.getElementById('cur');
+  var fill = document.getElementById('fill');
+  var copyBtn = document.getElementById('copy');
+  var clearBtn = document.getElementById('clear');
+  var tabBtns = Array.prototype.slice.call(document.querySelectorAll('.tab'));
+  var root = document.documentElement;
+
+  var pages = [];
+  for (var i = 0; i < PAGES; i++) pages.push('');
+  var active = 0;
+
+  function renderTabs(){
+    for (var i = 0; i < tabBtns.length; i++){
+      tabBtns[i].classList.toggle('active', i === active);
+      tabBtns[i].classList.toggle('has', pages[i].length > 0);
+    }
+  }
+
+  function update(){
+    // textarea의 줄바꿈은 "\n" 한 글자로 들어와 =LEN(A1)과 동일하게 카운트됩니다.
+    pages[active] = ta.value;
+    var n = ta.value.length;
+    cur.textContent = n;
+
+    var pct = Math.min(n / LIMIT, 1) * 100;
+    fill.style.width = pct + '%';
+
+    var color;
+    if (n > LIMIT){
+      color = 'var(--over)';
+    } else {
+      color = (n >= 450) ? 'var(--warn)' : 'var(--safe)';
+    }
+    root.style.setProperty('--accent', color);
+    renderTabs();
+  }
+
+  function switchTo(i){
+    if (i === active) return;
+    pages[active] = ta.value;   // 현재 페이지 저장
+    active = i;
+    ta.value = pages[active];   // 새 페이지 불러오기
+    update();
+    ta.focus();
+  }
+
+  ta.addEventListener('input', update);
+
+  for (var t = 0; t < tabBtns.length; t++){
+    (function(btn){
+      btn.addEventListener('click', function(){
+        switchTo(parseInt(btn.getAttribute('data-i'), 10));
+      });
+    })(tabBtns[t]);
+  }
+
+  // 복사: 보안 컨텍스트(클립보드 API)가 안 되는 file:// 환경을 위해 execCommand 폴백 포함
+  function copyText(){
+    var value = ta.value;
+    function done(){
+      copyBtn.textContent = 'Copied!';
+      copyBtn.classList.add('done');
+      setTimeout(function(){
+        copyBtn.textContent = 'Copy';
+        copyBtn.classList.remove('done');
+      }, 1400);
+    }
+    function fallback(){
+      ta.focus();
+      ta.setSelectionRange(0, ta.value.length);
+      try { document.execCommand('copy'); } catch(e){}
+      ta.setSelectionRange(ta.value.length, ta.value.length);
+      done();
+    }
+    if (navigator.clipboard && window.isSecureContext){
+      navigator.clipboard.writeText(value).then(done).catch(fallback);
+    } else {
+      fallback();
+    }
+  }
+
+  copyBtn.addEventListener('click', copyText);
+
+  clearBtn.addEventListener('click', function(){
+    ta.value = '';        // 현재 페이지만 지움
+    update();
+    ta.focus();
+  });
+
+  update();
+</script>
+</body>
+</html>
