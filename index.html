@@ -85,19 +85,25 @@
   textarea::placeholder{color:#C2BBAD;}
 
   /* 카운터: 이 도구의 핵심 */
-  .meter{display:flex;flex-direction:column;gap:8px;padding:2px;}
-  .track{height:8px;border-radius:99px;background:var(--line);overflow:hidden;}
+  .meter{display:flex;align-items:center;gap:12px;padding:0 4px;}
+  .track{flex:1;height:8px;border-radius:99px;background:var(--line);overflow:hidden;}
   .fill{height:100%;width:0%;border-radius:99px;background:var(--accent);transition:width .18s ease, background .25s ease;}
-  .readout{display:flex;align-items:baseline;justify-content:space-between;padding:0 4px;}
   .count{
     font-variant-numeric:tabular-nums;
     font-feature-settings:"tnum";
     font-weight:800;
-    font-size:22px;
+    font-size:16px;
     letter-spacing:-.01em;
+    white-space:nowrap;
   }
-  .count .cur{color:var(--accent);transition:color .25s ease;}
-  .count .max{color:var(--muted);font-weight:700;font-size:15px;}
+  .count .cur{
+    color:var(--accent);
+    transition:color .25s ease;
+    display:inline-block;
+    min-width:3ch;
+    text-align:right;
+  }
+  .count .max{color:var(--muted);font-weight:700;}
   .status{font-size:14px;font-weight:700;color:var(--muted);transition:color .25s ease;}
   .status.over{color:var(--over);}
 
@@ -155,15 +161,13 @@
       <button class="tab" data-i="2">3</button>
     </div>
 
-    <div class="card">
-      <textarea id="text" placeholder="내용" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
-    </div>
-
     <div class="meter">
       <div class="track"><div class="fill" id="fill"></div></div>
-      <div class="readout">
-        <div class="count"><span class="cur" id="cur">0</span><span class="max"> / 500</span></div>
-      </div>
+      <div class="count"><span class="cur" id="cur">0</span><span class="max">/500</span></div>
+    </div>
+
+    <div class="card">
+      <textarea id="text" placeholder="내용" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
     </div>
 
     <div class="actions">
