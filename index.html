@@ -119,6 +119,28 @@
 
   @media (prefers-reduced-motion:reduce){*{transition:none!important;}}
   button:focus-visible{outline:2px solid var(--ink);outline-offset:2px;}
+
+  /* 확인 팝업 */
+  .overlay{
+    position:fixed;inset:0;
+    background:rgba(43,38,32,.45);
+    display:none;align-items:center;justify-content:center;
+    padding:24px;z-index:10;
+  }
+  .overlay.show{display:flex;}
+  .dialog{
+    background:var(--card);
+    border-radius:22px;
+    padding:24px 22px 18px;
+    width:100%;max-width:320px;
+    box-shadow:0 24px 60px -20px rgba(43,38,32,.5);
+    text-align:center;
+  }
+  .dialog p{margin:0 0 20px;font-size:16px;font-weight:700;line-height:1.5;}
+  .dialog .row{display:flex;gap:10px;}
+  .dialog button{flex:1;font-size:15px;}
+  .btn-no{background:#EFE8DB;color:var(--ink);}
+  .btn-yes{background:var(--over);color:#FFF3E9;}
 </style>
 </head>
 <body>
@@ -150,6 +172,15 @@
     </div>
   </div>
 
+  <div class="overlay" id="overlay">
+    <div class="dialog" role="alertdialog" aria-modal="true">
+      <p>내용을 다 지우시겠습니까?</p>
+      <div class="row">
+        <button class="btn-yes" id="yes">예</button>
+        <button class="btn-no" id="no">아니오</button>
+      </div>
+    </div>
+  </div>
 <script>
   var LIMIT = 500;
   var PAGES = 3;
@@ -237,10 +268,24 @@
 
   copyBtn.addEventListener('click', copyText);
 
+  var overlay = document.getElementById('overlay');
+  var yesBtn = document.getElementById('yes');
+  var noBtn = document.getElementById('no');
+
   clearBtn.addEventListener('click', function(){
+    if (ta.value.length === 0){ ta.focus(); return; }  // 빈 페이지면 그냥 통과
+    overlay.classList.add('show');
+  });
+  function closeDialog(){ overlay.classList.remove('show'); }
+  noBtn.addEventListener('click', function(){ closeDialog(); ta.focus(); });
+  yesBtn.addEventListener('click', function(){
     ta.value = '';        // 현재 페이지만 지움
     update();
+    closeDialog();
     ta.focus();
+  });
+  overlay.addEventListener('click', function(e){
+    if (e.target === overlay) closeDialog();   // 바깥 영역 탭하면 닫기
   });
 
   update();
