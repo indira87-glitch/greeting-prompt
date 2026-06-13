@@ -14,7 +14,7 @@
 <title>Greeting Prompt</title>
 <style>
   :root{
-    --bg:#F4EFE6;
+    --bg:linear-gradient(180deg,#081225 0%,#102542 55%,#0B1730 100%);
     --card:#FFFFFF;
     --ink:#2B2620;
     --muted:#9A9388;
@@ -28,6 +28,8 @@
   html,body{margin:0;padding:0;}
   body{
     background:var(--bg);
+    position:relative;
+    overflow-x:hidden;
     color:var(--ink);
     font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;
     line-height:1.5;
@@ -56,21 +58,21 @@
     30%,50%,70%{transform:translateX(-3px)}
     40%,60%{transform:translateX(3px)}
   }
-  h1{font-size:17px;margin:0;font-weight:800;letter-spacing:-.01em;}
+  h1{font-size:17px;margin:0;font-weight:800;letter-spacing:-.01em;color:#FFFFFF;text-shadow:0 1px 8px rgba(255,255,255,.15);}
 
   .tabs{display:flex;gap:6px;padding:0 2px;}
   .tab{
     flex:1;position:relative;
-    background:transparent;
-    border:1px solid var(--line);
-    color:var(--muted);
+    background:rgba(255,255,255,.08);
+    border:1px solid rgba(255,255,255,.15);
+    color:rgba(255,255,255,.78);
     border-radius:14px;
     padding:11px 0;
     font-size:15px;font-weight:800;
     font-variant-numeric:tabular-nums;
     transition:background .18s ease, color .18s ease, border-color .18s ease;
   }
-  .tab.active{background:var(--ink);color:#FFF8E1;border-color:var(--ink);}
+  .tab.active{background:rgba(255,255,255,.94);color:#102542;border-color:rgba(255,255,255,.95);}
   .tab.has::after{
     content:"";position:absolute;top:7px;right:9px;
     width:5px;height:5px;border-radius:99px;background:var(--safe);
@@ -142,11 +144,11 @@
     transition:transform .06s ease, opacity .2s ease, background .2s ease;
   }
   button:active{transform:scale(.985);}
-  .copy{flex:1;background:var(--ink);color:#FFF8E1;font-size:16px;}
+  .copy{flex:1;background:linear-gradient(180deg,#4F8CFF 0%,#2D6BFF 100%);color:#FFFFFF;font-size:16px;box-shadow:0 8px 20px rgba(45,107,255,.35);}
   .copy.done{background:var(--safe);}
-  .clear{background:transparent;color:var(--muted);border:1px solid var(--line);padding-left:18px;padding-right:18px;}
+  .clear{background:rgba(255,255,255,.08);color:rgba(255,255,255,.82);border:1px solid rgba(255,255,255,.18);padding-left:18px;padding-right:18px;backdrop-filter:blur(4px);}
 
-  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;}}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;} .tako-pop{display:none!important;}}
   button:focus-visible{outline:2px solid var(--ink);outline-offset:2px;}
 
   .overlay{
@@ -169,7 +171,79 @@
   .dialog button{flex:1;font-size:15px;}
   .btn-no{background:#EFE8DB;color:var(--ink);}
   .btn-yes{background:var(--over);color:#FFF3E9;}
-</style>
+
+  /* 글자 입력 시 타코야키가 살짝 팡팡 튀는 효과 */
+  .tako-pop{
+    position:fixed;
+    width:21px;
+    height:21px;
+    pointer-events:none;
+    z-index:20;
+    opacity:0;
+    transform:translate(-50%,-50%) scale(.65) rotate(0deg);
+    animation:takoPop .62s cubic-bezier(.18,.76,.36,1) forwards;
+    filter:drop-shadow(0 2px 3px rgba(43,38,32,.28));
+    will-change:transform, opacity;
+  }
+  .tako-pop img{display:block;width:100%;height:100%;object-fit:contain;}
+  @keyframes takoPop{
+    0%{opacity:0;transform:translate(-50%,-50%) scale(.55) rotate(0deg);}
+    12%{opacity:1;}
+    100%{opacity:0;transform:translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(1.05) rotate(var(--rot));}
+  }
+
+  /* 겨울밤 눈 효과 */
+  body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    pointer-events:none;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(255,255,255,.18) 0 2px, transparent 3px),
+      radial-gradient(circle at 80% 15%, rgba(255,255,255,.12) 0 1px, transparent 2px),
+      radial-gradient(circle at 70% 35%, rgba(255,255,255,.10) 0 2px, transparent 3px);
+    z-index:0;
+  }
+
+  .wrap{position:relative;z-index:2;}
+
+  .snowflake{
+    position:fixed;
+    top:-20px;
+    color:rgba(255,255,255,.5);
+    pointer-events:none;
+    z-index:1;
+    text-shadow:0 0 4px rgba(255,255,255,.15);
+    animation:snowFall linear forwards;
+  }
+
+  @keyframes snowFall{
+    from{
+      transform:translateY(0) translateX(0);
+      opacity:.5;
+    }
+    to{
+      transform:translateY(calc(100vh + 40px)) translateX(var(--drift));
+      opacity:.15;
+    }
+  }
+
+
+  /* 타코야키 글로우 */
+  .tako-ball{
+    filter:
+      drop-shadow(0 0 6px rgba(255,170,70,.45))
+      drop-shadow(0 0 14px rgba(255,140,30,.25))
+      drop-shadow(0 2px 3px rgba(43,38,32,.4));
+  }
+
+  .trail{
+    box-shadow:
+      0 0 8px rgba(255,170,70,.35),
+      0 0 18px rgba(255,140,30,.18);
+  }
+
+  </style>
 </head>
 <body>
   <div class="wrap">
@@ -233,6 +307,9 @@
   var avatars = document.getElementById('avatars');
   var mascotGirl = document.getElementById('mascotGirl');
   var mascotBoy = document.getElementById('mascotBoy');
+  var takoImgSrc = taball.querySelector('img').src;
+  var lastInputLength = 0;
+  var lastPopTime = 0;
 
   var pages = [];
   for (var i = 0; i < PAGES; i++) pages.push('');
@@ -274,6 +351,53 @@
     renderTabs();
   }
 
+
+  function popTakoyaki(amount){
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    var now = Date.now();
+    if (now - lastPopTime < 42) return;
+    lastPopTime = now;
+
+    var rect = taball.getBoundingClientRect();
+    var count = Math.min(Math.max(amount || 1, 1), 3);
+
+    for (var i = 0; i < count; i++){
+      var particle = document.createElement('span');
+      var img = document.createElement('img');
+      img.alt = '';
+      img.src = takoImgSrc;
+      particle.className = 'tako-pop';
+      particle.appendChild(img);
+
+      var startX = rect.left + rect.width / 2 + (Math.random() * 14 - 7);
+      var startY = rect.top + rect.height / 2 + (Math.random() * 8 - 4);
+      var tx = (Math.random() * 52 - 26).toFixed(1) + 'px';
+      var ty = (-(36 + Math.random() * 42)).toFixed(1) + 'px';
+      var rot = (Math.random() * 120 - 60).toFixed(1) + 'deg';
+
+      particle.style.left = startX + 'px';
+      particle.style.top = startY + 'px';
+      particle.style.setProperty('--tx', tx);
+      particle.style.setProperty('--ty', ty);
+      particle.style.setProperty('--rot', rot);
+      particle.style.animationDelay = (i * 35) + 'ms';
+
+      document.body.appendChild(particle);
+      (function(el){
+        setTimeout(function(){ if (el && el.parentNode) el.parentNode.removeChild(el); }, 850);
+      })(particle);
+    }
+  }
+
+  function handleInput(){
+    var n = ta.value.length;
+    var added = Math.max(n - lastInputLength, 0);
+    update();
+    if (added > 0) popTakoyaki(added);
+    lastInputLength = n;
+  }
+
   function switchTo(i){
     if (i === active) return;
     pages[active] = ta.value;
@@ -281,10 +405,11 @@
     ta.value = pages[active];
     lastState = '';
     update();
+    lastInputLength = ta.value.length;
     ta.focus();
   }
 
-  ta.addEventListener('input', update);
+  ta.addEventListener('input', handleInput);
 
   for (var t = 0; t < tabBtns.length; t++){
     (function(btn){
@@ -334,6 +459,7 @@
     ta.value = '';
     lastState = '';
     update();
+    lastInputLength = 0;
     closeDialog();
     ta.focus();
   });
@@ -342,6 +468,45 @@
   });
 
   update();
+  lastInputLength = ta.value.length;
 </script>
+
+<script>
+(function(){
+  const ta=document.getElementById('text');
+  if(!ta) return;
+
+  function createSnow(){
+    const s=document.createElement('div');
+    s.className='snowflake';
+    s.textContent='❄';
+
+    s.style.left=(Math.random()*100)+'vw';
+    s.style.fontSize=(16+Math.random()*16)+'px'; /* 눈송이 2배 */
+    s.style.setProperty('--drift',(Math.random()*60-30)+'px');
+    s.style.animationDuration=(7+Math.random()*5)+'s';
+
+    document.body.appendChild(s);
+    setTimeout(()=>s.remove(),13000);
+  }
+
+  let lastLen=0;
+
+  ta.addEventListener('input',()=>{
+    const diff=Math.max(0, ta.value.length-lastLen);
+    lastLen=ta.value.length;
+
+    if(diff===0) return;
+
+    /* 글자를 가리지 않도록 적은 수만 생성 */
+    const count=Math.min(6, diff * 2);
+
+    for(let i=0;i<count;i++){
+      setTimeout(createSnow,i*120);
+    }
+  });
+})();
+</script>
+
 </body>
 </html>
