@@ -582,6 +582,44 @@
     })(tabBtns[t]);
   }
 
+  function copyViaSelection(value){
+    var onCopy = function(e){
+      try {
+        e.clipboardData.setData('text/plain', value);
+        e.clipboardData.setData('text/html', '<span>' + escapeHtml(value).replace(/\u200b/g, '&#8203;') + '</span>');
+        e.preventDefault();
+      } catch (err){}
+    };
+    document.addEventListener('copy', onCopy);
+
+    var dummy = document.createElement('textarea');
+    dummy.value = value;
+    dummy.setAttribute('aria-hidden', 'true');
+    dummy.readOnly = false;
+    dummy.contentEditable = 'true';
+    dummy.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;padding:0;margin:0;border:0;opacity:0.01;font-size:16px;z-index:99;';
+    document.body.appendChild(dummy);
+    dummy.focus();
+    dummy.setSelectionRange(0, dummy.value.length);
+    try {
+      var range = document.createRange();
+      range.selectNodeContents(dummy);
+      var sel = window.getSelection();
+      if (sel){
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+    } catch (err){}
+
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch (err){}
+
+    document.removeEventListener('copy', onCopy);
+    document.body.removeChild(dummy);
+    ta.focus();
+    return ok;
+  }
+
   function copyText(){
     var value = buildCopyValue(ta.value);
     function done(){
@@ -592,23 +630,12 @@
         copyBtn.classList.remove('done');
       }, 1400);
     }
-    function fallback(){
-      var dummy = document.createElement('textarea');
-      dummy.value = value;
-      dummy.setAttribute('readonly', '');
-      dummy.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;';
-      document.body.appendChild(dummy);
-      dummy.focus();
-      dummy.select();
-      try { document.execCommand('copy'); } catch(e){}
-      document.body.removeChild(dummy);
-      ta.focus();
+    if (copyViaSelection(value)){
       done();
+      return;
     }
     if (navigator.clipboard && window.isSecureContext){
-      navigator.clipboard.writeText(value).then(done).catch(fallback);
-    } else {
-      fallback();
+      navigator.clipboard.writeText(value).then(done).catch(function(){});
     }
   }
 
