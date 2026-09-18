@@ -582,62 +582,76 @@
     })(tabBtns[t]);
   }
 
-  function copyViaSelection(value){
-    var onCopy = function(e){
-      try {
-        e.clipboardData.setData('text/plain', value);
-        e.clipboardData.setData('text/html', '<span>' + escapeHtml(value).replace(/\u200b/g, '&#8203;') + '</span>');
-        e.preventDefault();
-      } catch (err){}
-    };
-    document.addEventListener('copy', onCopy);
+function copyViaSelection(value){
+  var dummy = document.createElement('textarea');
 
-    var dummy = document.createElement('textarea');
-    dummy.value = value;
-    dummy.setAttribute('aria-hidden', 'true');
-    dummy.readOnly = false;
-    dummy.contentEditable = 'true';
-    dummy.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;padding:0;margin:0;border:0;opacity:0.01;font-size:16px;z-index:99;';
-    document.body.appendChild(dummy);
-    dummy.focus();
-    dummy.setSelectionRange(0, dummy.value.length);
-    try {
-      var range = document.createRange();
-      range.selectNodeContents(dummy);
-      var sel = window.getSelection();
-      if (sel){
-        sel.removeAllRanges();
-        sel.addRange(range);
-      }
-    } catch (err){}
+  dummy.value = value;
+  dummy.setAttribute('aria-hidden', 'true');
+  dummy.setAttribute('readonly', '');
+  dummy.style.cssText =
+    'position:fixed;' +
+    'top:-9999px;' +
+    'left:-9999px;' +
+    'width:1px;' +
+    'height:1px;' +
+    'padding:0;' +
+    'margin:0;' +
+    'border:0;' +
+    'font-size:16px;';
 
-    var ok = false;
-    try { ok = document.execCommand('copy'); } catch (err){}
+  document.body.appendChild(dummy);
 
-    document.removeEventListener('copy', onCopy);
-    document.body.removeChild(dummy);
-    ta.focus();
-    return ok;
+  dummy.focus();
+  dummy.select();
+  dummy.setSelectionRange(0, value.length);
+
+  var ok = false;
+
+  try {
+    ok = document.execCommand('copy');
+  } catch (err) {
+    ok = false;
   }
 
-  function copyText(){
-    var value = buildCopyValue(ta.value);
-    function done(){
-      copyBtn.textContent = 'Copied!';
-      copyBtn.classList.add('done');
-      setTimeout(function(){
-        copyBtn.textContent = 'Copy';
-        copyBtn.classList.remove('done');
-      }, 1400);
-    }
+  document.body.removeChild(dummy);
+  ta.focus();
+
+  return ok;
+}
+
+function copyText(){
+  var value = buildCopyValue(ta.value);
+
+  function done(){
+    copyBtn.textContent = 'Copied!';
+    copyBtn.classList.add('done');
+
+    setTimeout(function(){
+      copyBtn.textContent = 'Copy';
+      copyBtn.classList.remove('done');
+    }, 1400);
+  }
+
+  function fallbackCopy(){
     if (copyViaSelection(value)){
       done();
-      return;
-    }
-    if (navigator.clipboard && window.isSecureContext){
-      navigator.clipboard.writeText(value).then(done).catch(function(){});
+    } else {
+      alert('복사하지 못했습니다. 브라우저의 클립보드 권한을 확인해주세요.');
     }
   }
+
+  /*
+   * 모바일에서는 navigator.clipboard.writeText를 먼저 사용합니다.
+   * 이 방식은 HTML 형식 없이 실제 문자열을 text/plain으로 저장합니다.
+   */
+  if (navigator.clipboard && window.isSecureContext){
+    navigator.clipboard.writeText(value)
+      .then(done)
+      .catch(fallbackCopy);
+  } else {
+    fallbackCopy();
+  }
+}
 
   copyBtn.addEventListener('click', copyText);
 
