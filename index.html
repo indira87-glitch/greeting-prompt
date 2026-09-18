@@ -351,7 +351,8 @@
   var PAGES = 4;
   var LONG_INDEX = 3;
   var ZWSP_COUNT = 500;
-  var ZWSP_PAD = Array(ZWSP_COUNT + 1).join('\u200b');
+  var ZWSP_PAD = Array(ZWSP_COUNT + 1).join('\u2063');
+  var INVISIBLE_RE = /[\u200b\u2060\u2063]/g;
   var STORAGE_KEY = 'greeting-prompt-draft-v1';
   var ta = document.getElementById('text');
   var editorCard = document.getElementById('editorCard');
@@ -412,16 +413,24 @@
   }
 
   function stripZwsp(value){
-    return value.replace(/\u200b/g, '');
+    return value.replace(INVISIBLE_RE, '');
+  }
+
+  function countInvisible(value){
+    return (value.match(INVISIBLE_RE) || []).length;
   }
 
   function sanitizeEditorValue(){
     var value = ta.value;
-    if (value.indexOf('\u200b') === -1) return false;
+    if (!INVISIBLE_RE.test(value)){
+      INVISIBLE_RE.lastIndex = 0;
+      return false;
+    }
+    INVISIBLE_RE.lastIndex = 0;
     var start = ta.selectionStart;
     var end = ta.selectionEnd;
-    var removedStart = value.slice(0, start).split('\u200b').length - 1;
-    var removedEnd = value.slice(0, end).split('\u200b').length - 1;
+    var removedStart = countInvisible(value.slice(0, start));
+    var removedEnd = countInvisible(value.slice(0, end));
     ta.value = stripZwsp(value);
     try {
       ta.setSelectionRange(Math.max(0, start - removedStart), Math.max(0, end - removedEnd));
@@ -582,76 +591,41 @@
     })(tabBtns[t]);
   }
 
-function copyViaSelection(value){
-  var dummy = document.createElement('textarea');
-
-  dummy.value = value;
-  dummy.setAttribute('aria-hidden', 'true');
-  dummy.setAttribute('readonly', '');
-  dummy.style.cssText =
-    'position:fixed;' +
-    'top:-9999px;' +
-    'left:-9999px;' +
-    'width:1px;' +
-    'height:1px;' +
-    'padding:0;' +
-    'margin:0;' +
-    'border:0;' +
-    'font-size:16px;';
-
-  document.body.appendChild(dummy);
-
-  dummy.focus();
-  dummy.select();
-  dummy.setSelectionRange(0, value.length);
-
-  var ok = false;
-
-  try {
-    ok = document.execCommand('copy');
-  } catch (err) {
-    ok = false;
+  function copyViaSelection(value){
+    var dummy = document.createElement('textarea');
+    dummy.value = value;
+    dummy.setAttribute('aria-hidden', 'true');
+    dummy.setAttribute('readonly', '');
+    dummy.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;padding:0;margin:0;border:0;opacity:0.01;font-size:16px;z-index:99;';
+    document.body.appendChild(dummy);
+    dummy.focus();
+    dummy.setSelectionRange(0, dummy.value.length);
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch (err){}
+    document.body.removeChild(dummy);
+    ta.focus();
+    return ok;
   }
 
-  document.body.removeChild(dummy);
-  ta.focus();
-
-  return ok;
-}
-
-function copyText(){
-  var value = buildCopyValue(ta.value);
-
-  function done(){
-    copyBtn.textContent = 'Copied!';
-    copyBtn.classList.add('done');
-
-    setTimeout(function(){
-      copyBtn.textContent = 'Copy';
-      copyBtn.classList.remove('done');
-    }, 1400);
-  }
-
-  function fallbackCopy(){
-    if (copyViaSelection(value)){
-      done();
-    } else {
-      alert('복사하지 못했습니다. 브라우저의 클립보드 권한을 확인해주세요.');
+  function copyText(){
+    var value = buildCopyValue(ta.value);
+    function done(){
+      copyBtn.textContent = 'Copied!';
+      copyBtn.classList.add('done');
+      setTimeout(function(){
+        copyBtn.textContent = 'Copy';
+        copyBtn.classList.remove('done');
+      }, 1400);
     }
-  }
-
-  /*
-   * 모바일에서는 navigator.clipboard.writeText를 먼저 사용합니다.
-   * 이 방식은 HTML 형식 없이 실제 문자열을 text/plain으로 저장합니다.
-   */
-  if (navigator.clipboard && window.isSecureContext){
-    navigator.clipboard.writeText(value)
-      .then(done)
-      .catch(fallbackCopy);
-  } else {
+    function fallbackCopy(){
+      if (copyViaSelection(value)) done();
+    }
+    if (navigator.clipboard && window.isSecureContext){
+      navigator.clipboard.writeText(value).then(done).catch(fallbackCopy);
+      return;
+    }
     fallbackCopy();
   }
-}
 
   copyBtn.addEventListener('click', copyText);
 
