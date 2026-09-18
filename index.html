@@ -121,66 +121,44 @@
     box-shadow:0 1px 0 rgba(43,38,32,.03), 0 12px 30px -22px rgba(43,38,32,.35);
   }
   .editor{position:relative;}
-  textarea,
-  .highlight{
+  .long-editor{display:none;flex-direction:column;}
+  .card.long-mode .editor:not(.long-editor){display:none;}
+  .card.long-mode .long-editor{display:flex;}
+  textarea{
     width:100%;
     border:0;
     outline:0;
     font:inherit;
-    font-family:inherit;
     font-size:16px;
-    font-weight:inherit;
     line-height:1.6;
-    letter-spacing:normal;
     padding:16px;
     min-height:460px;
     border-radius:18px;
     white-space:pre-wrap;
     word-wrap:break-word;
     overflow-wrap:break-word;
-    word-break:break-word;
-    tab-size:4;
-    -moz-tab-size:4;
-    overflow:auto;
-  }
-  textarea{
     resize:none;
     background:transparent;
     color:var(--ink);
-    position:relative;
-    z-index:1;
-    scrollbar-gutter:stable;
   }
   textarea::placeholder{color:#C2BBAD;}
-  .highlight{
-    position:absolute;
-    top:0;
-    left:0;
-    height:100%;
-    margin:0;
-    overflow:hidden;
-    pointer-events:none;
-    display:none;
-    color:transparent;
-  }
-  .card.long-mode .highlight{display:block;}
-  .card.long-mode textarea{
-    color:transparent;
-    caret-color:var(--ink);
-  }
-  .card.long-mode textarea::placeholder{color:transparent;}
-  .card.long-mode textarea::selection{
-    background:rgba(45,107,255,.22);
-    color:transparent;
-  }
-  .title-line{
+  .long-editor .title-input{
+    min-height:52px;
+    max-height:140px;
+    padding:14px 16px 12px;
     color:#1E5AE8;
-    background:rgba(45,107,255,.10);
-    border-radius:5px;
-    box-decoration-break:clone;
-    -webkit-box-decoration-break:clone;
+    font-weight:700;
+    background:rgba(45,107,255,.08);
+    border-radius:16px 16px 0 0;
+    overflow-y:auto;
   }
-  .body-line{color:#8A8378;}
+  .long-editor .body-input{
+    min-height:360px;
+    padding-top:14px;
+    color:#8A8378;
+    border-radius:0 0 16px 16px;
+    border-top:1px solid var(--line);
+  }
 
   .actions{display:flex;gap:10px;}
   button{
@@ -321,9 +299,12 @@
     </div>
 
     <div class="card" id="editorCard">
-      <div class="editor">
-        <div class="highlight" id="highlight" aria-hidden="true"></div>
+      <div class="editor" id="normalEditor">
         <textarea id="text" placeholder="내용" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
+      </div>
+      <div class="editor long-editor" id="longEditor">
+        <textarea id="titleText" class="title-input" rows="1" placeholder="제목" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
+        <textarea id="bodyText" class="body-input" placeholder="본문" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
       </div>
     </div>
 
@@ -350,12 +331,14 @@
   var LIMIT = 500;
   var PAGES = 4;
   var LONG_INDEX = 3;
-  var ZWSP_COUNT = 500;
-  var ZWSP_PAD = Array(ZWSP_COUNT + 1).join('\u200b');
+  var PAD_COUNT = 500;
+  var PAD_CHAR = '\u3164';
+  var PAD = Array(PAD_COUNT + 1).join(PAD_CHAR);
   var STORAGE_KEY = 'greeting-prompt-draft-v1';
   var ta = document.getElementById('text');
+  var titleTa = document.getElementById('titleText');
+  var bodyTa = document.getElementById('bodyText');
   var editorCard = document.getElementById('editorCard');
-  var highlight = document.getElementById('highlight');
   var cur = document.getElementById('cur');
   var trail = document.getElementById('trail');
   var taball = document.getElementById('taball');
@@ -390,12 +373,11 @@
       var saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
       if (!saved || !Array.isArray(saved.pages)) return;
       for (var i = 0; i < PAGES; i++){
-        pages[i] = typeof saved.pages[i] === 'string' ? stripZwsp(saved.pages[i]) : '';
+        pages[i] = typeof saved.pages[i] === 'string' ? normalizeDraft(saved.pages[i]) : '';
       }
       if (Number.isInteger(saved.active) && saved.active >= 0 && saved.active < PAGES){
         active = saved.active;
       }
-      ta.value = pages[active];
     } catch(e){}
   }
 
@@ -403,71 +385,71 @@
     return active === LONG_INDEX;
   }
 
-  function applyPlaceholder(){
-    ta.placeholder = isLongTab() ? '첫 줄은 제목, 다음 줄부터 본문' : '내용';
-  }
-
-  function escapeHtml(s){
-    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  }
-
-  function stripZwsp(value){
-    return value.replace(/\u200b/g, '');
-  }
-
-  function sanitizeEditorValue(){
-    var value = ta.value;
-    if (value.indexOf('\u200b') === -1) return false;
-    var start = ta.selectionStart;
-    var end = ta.selectionEnd;
-    var removedStart = value.slice(0, start).split('\u200b').length - 1;
-    var removedEnd = value.slice(0, end).split('\u200b').length - 1;
-    ta.value = stripZwsp(value);
-    try {
-      ta.setSelectionRange(Math.max(0, start - removedStart), Math.max(0, end - removedEnd));
-    } catch (e){}
-    return true;
-  }
-
-  function syncHighlightBox(){
-    if (!isLongTab() || !ta.value){
-      highlight.style.width = '';
-      highlight.style.height = '';
-      return;
-    }
-    highlight.style.width = ta.clientWidth + 'px';
-    highlight.style.height = ta.clientHeight + 'px';
-    highlight.scrollTop = ta.scrollTop;
-    highlight.scrollLeft = ta.scrollLeft;
-  }
-
-  function renderHighlight(){
-    if (!isLongTab() || !ta.value){
-      editorCard.classList.remove('long-mode');
-      highlight.innerHTML = '';
-      syncHighlightBox();
-      return;
-    }
-    editorCard.classList.add('long-mode');
-    var text = ta.value;
-    var nl = text.indexOf('\n');
-    var html;
-    if (nl === -1){
-      html = '<span class="title-line">' + escapeHtml(text) + '</span>';
-    } else {
-      html = '<span class="title-line">' + escapeHtml(text.slice(0, nl)) + '</span>\n'
-        + '<span class="body-line">' + escapeHtml(text.slice(nl + 1)) + '</span>';
-    }
-    if (text.charAt(text.length - 1) === '\n') html += '<br>';
-    highlight.innerHTML = html;
-    syncHighlightBox();
-  }
-
-  function buildCopyValue(text){
-    if (!isLongTab()) return text;
+  function normalizeDraft(text){
+    text = String(text || '').replace(/\u200b/g, '');
     var nl = text.indexOf('\n');
     if (nl === -1) return text;
-    return text.slice(0, nl + 1) + ZWSP_PAD + text.slice(nl + 1);
+    return text.slice(0, nl + 1) + text.slice(nl + 1).replace(/^[\u3164]+/, '');
+  }
+
+  function splitLongValue(text){
+    text = normalizeDraft(text);
+    var nl = text.indexOf('\n');
+    if (nl === -1) return { title: text, body: '' };
+    return { title: text.slice(0, nl).replace(/\r/g, ''), body: text.slice(nl + 1) };
+  }
+
+  function joinLongValue(){
+    var title = (titleTa.value || '').replace(/\r?\n/g, ' ');
+    var body = bodyTa.value || '';
+    if (!body) return title;
+    return title + '\n' + body;
+  }
+
+  function currentValue(){
+    return isLongTab() ? joinLongValue() : ta.value;
+  }
+
+  function autosizeTitle(){
+    titleTa.style.height = 'auto';
+    titleTa.style.height = Math.max(52, titleTa.scrollHeight) + 'px';
+  }
+
+  function loadEditor(){
+    if (isLongTab()){
+      editorCard.classList.add('long-mode');
+      var parts = splitLongValue(pages[active]);
+      titleTa.value = parts.title;
+      bodyTa.value = parts.body;
+      autosizeTitle();
+    } else {
+      editorCard.classList.remove('long-mode');
+      ta.value = pages[active];
+    }
+  }
+
+  function clearEditor(){
+    ta.value = '';
+    titleTa.value = '';
+    bodyTa.value = '';
+    autosizeTitle();
+  }
+
+  function focusEditor(){
+    if (isLongTab()){
+      if (!titleTa.value) titleTa.focus();
+      else bodyTa.focus();
+    } else {
+      ta.focus();
+    }
+  }
+
+  function buildCopyValue(){
+    if (!isLongTab()) return ta.value;
+    var title = (titleTa.value || '').replace(/\r?\n/g, ' ');
+    var body = bodyTa.value || '';
+    if (!body) return title;
+    return title + '\n' + PAD + body;
   }
 
   function renderTabs(){
@@ -478,8 +460,8 @@
   }
 
   function update(){
-    pages[active] = ta.value;
-    var n = ta.value.length;
+    pages[active] = currentValue();
+    var n = pages[active].length;
     cur.textContent = n;
 
     var p = Math.min(n / LIMIT, 1);
@@ -503,7 +485,6 @@
       lastState = state;
     }
     renderTabs();
-    renderHighlight();
     saveDraft();
   }
 
@@ -547,8 +528,7 @@
   }
 
   function handleInput(){
-    sanitizeEditorValue();
-    var n = ta.value.length;
+    var n = currentValue().length;
     var added = Math.max(n - lastInputLength, 0);
     update();
     if (added > 0) popTakoyaki(added);
@@ -557,22 +537,29 @@
 
   function switchTo(i){
     if (i === active) return;
-    pages[active] = ta.value;
+    pages[active] = currentValue();
     active = i;
-    ta.value = pages[active];
     lastState = '';
-    applyPlaceholder();
+    loadEditor();
     update();
-    lastInputLength = ta.value.length;
-    ta.focus();
+    lastInputLength = currentValue().length;
+    focusEditor();
   }
 
   ta.addEventListener('input', handleInput);
-  ta.addEventListener('scroll', syncHighlightBox);
-  window.addEventListener('resize', syncHighlightBox);
-  if (window.ResizeObserver){
-    new ResizeObserver(syncHighlightBox).observe(ta);
-  }
+  titleTa.addEventListener('input', function(){
+    var cleaned = titleTa.value.replace(/\r?\n/g, ' ');
+    if (cleaned !== titleTa.value) titleTa.value = cleaned;
+    autosizeTitle();
+    handleInput();
+  });
+  titleTa.addEventListener('keydown', function(e){
+    if (e.key === 'Enter'){
+      e.preventDefault();
+      bodyTa.focus();
+    }
+  });
+  bodyTa.addEventListener('input', handleInput);
 
   for (var t = 0; t < tabBtns.length; t++){
     (function(btn){
@@ -583,7 +570,7 @@
   }
 
   function copyText(){
-    var value = buildCopyValue(ta.value);
+    var value = buildCopyValue();
     function done(){
       copyBtn.textContent = 'Copied!';
       copyBtn.classList.add('done');
@@ -596,14 +583,19 @@
       var dummy = document.createElement('textarea');
       dummy.value = value;
       dummy.setAttribute('readonly', '');
-      dummy.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;';
+      dummy.setAttribute('aria-hidden', 'true');
+      dummy.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;padding:0;margin:0;border:0;opacity:0.01;font-size:16px;z-index:99;';
       document.body.appendChild(dummy);
       dummy.focus();
-      dummy.select();
-      try { document.execCommand('copy'); } catch(e){}
+      dummy.setSelectionRange(0, dummy.value.length);
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch(e){}
       document.body.removeChild(dummy);
-      ta.focus();
-      done();
+      focusEditor();
+      if (ok) done();
+      else if (navigator.clipboard && window.isSecureContext){
+        navigator.clipboard.writeText(value).then(done).catch(function(){});
+      }
     }
     if (navigator.clipboard && window.isSecureContext){
       navigator.clipboard.writeText(value).then(done).catch(fallback);
@@ -621,7 +613,7 @@
   var dialogMode = 'clear';
 
   clearBtn.addEventListener('click', function(){
-    if (ta.value.length === 0){ ta.focus(); return; }
+    if (currentValue().length === 0){ focusEditor(); return; }
     dialogMode = 'clear';
     dialogMessage.textContent = '현재 페이지 내용을 다 지우시겠습니까?';
     yesBtn.textContent = '예';
@@ -642,16 +634,16 @@
     noBtn.textContent = '아니오';
     dialogMode = 'clear';
   }
-  noBtn.addEventListener('click', function(){ closeDialog(); ta.focus(); });
+  noBtn.addEventListener('click', function(){ closeDialog(); focusEditor(); });
   yesBtn.addEventListener('click', function(){
     if (dialogMode === 'exit'){
       pages = [];
       for (var p = 0; p < PAGES; p++) pages.push('');
       active = 0;
-      ta.value = '';
+      clearEditor();
       lastState = '';
       lastInputLength = 0;
-      applyPlaceholder();
+      loadEditor();
       update();
       try { localStorage.removeItem(STORAGE_KEY); } catch(e){}
       closeDialog();
@@ -666,12 +658,12 @@
       }, 250);
       return;
     }
-    ta.value = '';
+    clearEditor();
     lastState = '';
     update();
     lastInputLength = 0;
     closeDialog();
-    ta.focus();
+    focusEditor();
   });
   overlay.addEventListener('click', function(e){
     if (e.target === overlay) closeDialog();
@@ -683,16 +675,13 @@
   });
 
   restoreDraft();
-  applyPlaceholder();
+  loadEditor();
   update();
-  lastInputLength = ta.value.length;
+  lastInputLength = currentValue().length;
 </script>
 
 <script>
 (function(){
-  const ta=document.getElementById('text');
-  if(!ta) return;
-
   function createSnow(){
     const s=document.createElement('div');
     s.className='snowflake';
@@ -707,21 +696,21 @@
     setTimeout(()=>s.remove(),13000);
   }
 
-  let lastLen=0;
+  function bindSnow(el){
+    let lastLen=el.value.length;
+    el.addEventListener('input',()=>{
+      const diff=Math.max(0, el.value.length-lastLen);
+      lastLen=el.value.length;
+      if(diff===0) return;
+      const count=Math.min(6, diff * 2);
+      for(let i=0;i<count;i++){
+        setTimeout(createSnow,i*120);
+      }
+    });
+  }
 
-  ta.addEventListener('input',()=>{
-    const diff=Math.max(0, ta.value.length-lastLen);
-    lastLen=ta.value.length;
-
-    if(diff===0) return;
-
-    /* 글자를 가리지 않도록 적은 수만 생성 */
-    const count=Math.min(6, diff * 2);
-
-    for(let i=0;i<count;i++){
-      setTimeout(createSnow,i*120);
-    }
-  });
+  const areas=document.querySelectorAll('textarea');
+  for(let i=0;i<areas.length;i++) bindSnow(areas[i]);
 })();
 </script>
 
