@@ -350,8 +350,8 @@
   var LIMIT = 500;
   var PAGES = 4;
   var LONG_INDEX = 3;
-  var ZWSP_COUNT = 500;
-  var ZWSP_PAD = Array(ZWSP_COUNT + 1).join('\u200b');
+  var ZWNJ_COUNT = 500;
+  var ZWNJ_PAD = Array(ZWNJ_COUNT + 1).join('\u200c');
   var STORAGE_KEY = 'greeting-prompt-draft-v1';
   var ta = document.getElementById('text');
   var editorCard = document.getElementById('editorCard');
@@ -390,7 +390,7 @@
       var saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
       if (!saved || !Array.isArray(saved.pages)) return;
       for (var i = 0; i < PAGES; i++){
-        pages[i] = typeof saved.pages[i] === 'string' ? stripZwsp(saved.pages[i]) : '';
+        pages[i] = typeof saved.pages[i] === 'string' ? stripGhostChars(saved.pages[i]) : '';
       }
       if (Number.isInteger(saved.active) && saved.active >= 0 && saved.active < PAGES){
         active = saved.active;
@@ -411,18 +411,18 @@
     return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
-  function stripZwsp(value){
-    return value.replace(/\u200b/g, '');
+  function stripGhostChars(value){
+    return value.replace(/[\u200b\u200c]/g, '');
   }
 
   function sanitizeEditorValue(){
     var value = ta.value;
-    if (value.indexOf('\u200b') === -1) return false;
+    if (!/[\u200b\u200c]/.test(value)) return false;
     var start = ta.selectionStart;
     var end = ta.selectionEnd;
-    var removedStart = value.slice(0, start).split('\u200b').length - 1;
-    var removedEnd = value.slice(0, end).split('\u200b').length - 1;
-    ta.value = stripZwsp(value);
+    var removedStart = (value.slice(0, start).match(/[\u200b\u200c]/g) || []).length;
+    var removedEnd = (value.slice(0, end).match(/[\u200b\u200c]/g) || []).length;
+    ta.value = stripGhostChars(value);
     try {
       ta.setSelectionRange(Math.max(0, start - removedStart), Math.max(0, end - removedEnd));
     } catch (e){}
@@ -467,7 +467,7 @@
     if (!isLongTab()) return text;
     var nl = text.indexOf('\n');
     if (nl === -1) return text;
-    return text.slice(0, nl + 1) + ZWSP_PAD + text.slice(nl + 1);
+    return text.slice(0, nl + 1) + ZWNJ_PAD + text.slice(nl + 1);
   }
 
   function renderTabs(){
